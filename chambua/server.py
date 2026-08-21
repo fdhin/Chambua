@@ -24,7 +24,7 @@ from .reverify import reverify_record
 from .sanitize import sanitize_html
 from .security import CsrfGuard, HostCheckMiddleware
 
-log = logging.getLogger("mail-workbench.server")
+log = logging.getLogger("chambua.server")
 
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024
 
@@ -37,7 +37,7 @@ CSP = (
 
 
 def create_app(workspace, guard: CsrfGuard, allowed_hosts: set[str]) -> FastAPI:
-    app = FastAPI(title="Mail Analysis Workbench", version=__version__, docs_url=None, redoc_url=None)
+    app = FastAPI(title="Chambua", version=__version__, docs_url=None, redoc_url=None)
     app.add_middleware(HostCheckMiddleware, allowed_hosts=allowed_hosts)
     app.state.workspace = workspace
     app.state.records: dict[str, dict] = {}

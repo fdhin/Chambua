@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from conftest import FIXTURES
 
-from mail_workbench.parse_msg import parse_msg
+from chambua.parse_msg import parse_msg
 
 
 def parse(ws, name: str):
@@ -45,7 +45,7 @@ def test_ansi_msg(ws):
 
 
 def test_msg_via_zip(ws, fx):
-    from mail_workbench.ingest import IngestResult, ingest_bytes
+    from chambua.ingest import IngestResult, ingest_bytes
 
     result = IngestResult()
     ingest_bytes(ws, (fx / "zip_mixed.zip").read_bytes(), "zip_mixed.zip", result)

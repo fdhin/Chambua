@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from mail_workbench.ingest import IngestResult, ingest_bytes
+from chambua.ingest import IngestResult, ingest_bytes
 
 
 def run(ws, data: bytes, filename: str):

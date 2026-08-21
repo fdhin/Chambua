@@ -3,7 +3,7 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mail-workbench"
+name = "chambua"
 version = "0.1.0"
 description = "Local, single-user inspector for suspicious email messages (.eml / .msg / .zip). No message data leaves the machine."
 readme = "README.md"
@@ -32,13 +32,13 @@ dev = [
 ]
 
 [project.scripts]
-mail-workbench = "mail_workbench.__main__:main"
+chambua = "chambua.__main__:main"
 
 [tool.setuptools]
-packages = ["mail_workbench"]
+packages = ["chambua"]
 
 [tool.setuptools.package-data]
-mail_workbench = ["static/*"]
+chambua = ["static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

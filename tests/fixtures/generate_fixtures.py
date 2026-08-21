@@ -1,4 +1,4 @@
-"""Generate the deterministic test fixtures for the mail-workbench suite.
+"""Generate the deterministic test fixtures for the chambua suite.
 
 Run:  .venv/bin/python tests/fixtures/generate_fixtures.py
 

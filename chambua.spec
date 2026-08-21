@@ -1,13 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PyInstaller spec — onefile binary, checked in so builds are reproducible.
-# Build:  pyinstaller mail-workbench.spec
-# Static assets are resolved at runtime via sys._MEIPASS (see mail_workbench/paths.py).
+# Build:  pyinstaller chambua.spec
+# Static assets are resolved at runtime via sys._MEIPASS (see chambua/paths.py).
 
 a = Analysis(
     ["entry.py"],
     pathex=[],
     binaries=[],
-    datas=[("mail_workbench/static", "static")],
+    datas=[("chambua/static", "static")],
     hiddenimports=[
         # uvicorn lazy-imports these based on the "standard" extras.
         "uvicorn.logging",
@@ -34,7 +34,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="mail-workbench",
+    name="chambua",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

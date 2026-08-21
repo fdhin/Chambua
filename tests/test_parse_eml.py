@@ -6,7 +6,7 @@ import json
 
 from conftest import FIXTURES
 
-from mail_workbench.parse_eml import parse_eml
+from chambua.parse_eml import parse_eml
 
 
 def parse(ws, name: str):
@@ -112,7 +112,7 @@ def test_multiple_dkim_signatures(ws):
 
 def test_idn_domains(ws):
     parsed, _ = parse(ws, "idn_domains.eml")
-    from mail_workbench.urls import idn_forms
+    from chambua.urls import idn_forms
     puny = "b\u00fccher-beispiel.de".encode("idna").decode("ascii")
     display, decoded_puny = idn_forms("b\u00fccher-beispiel.de")
     assert decoded_puny == puny

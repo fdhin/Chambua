@@ -1,9 +1,13 @@
-# Mail Analysis Workbench
+# Chambua
 
-A local, single-user desktop tool for security analysts to inspect suspicious
-email messages one at a time. Drop a message (or several) onto the app, and it
-parses and presents a two-pane inspector: metadata and analysis on the left,
-rendered content and raw source on the right.
+**Chambua** is Swahili for *to analyze* — and that is exactly what this tool
+does. It is a local, single-user desktop tool for security analysts to
+inspect suspicious email messages one at a time. Drop a message (or several)
+onto the app, and it parses and presents a two-pane inspector: metadata and
+analysis on the left, rendered content and raw source on the right.
+
+*(The project was built under the working title "Mail Analysis Workbench";
+the original build brief is preserved in `mail-workbench-spec.md`.)*
 
 **Nothing leaves the machine.** The only outbound requests the app can ever
 make are ones you explicitly trigger: a "Re-verify now" live DNS check, a
@@ -24,12 +28,12 @@ the session list.
 
 ### macOS (primary target)
 
-Download `mail-workbench-<version>-macos`, then:
+Download `chambua-<version>-macos`, then:
 
 ```sh
-chmod +x mail-workbench-<version>-macos
-xattr -d com.apple.quarantine mail-workbench-<version>-macos
-./mail-workbench-<version>-macos
+chmod +x chambua-<version>-macos
+xattr -d com.apple.quarantine chambua-<version>-macos
+./chambua-<version>-macos
 ```
 
 The binary is **unsigned** (internal tool; no Apple Developer notarization),
@@ -41,7 +45,7 @@ app** button in the UI header.
 
 ### Windows
 
-Download `mail-workbench-<version>-windows-x64.exe` and double-click. First
+Download `chambua-<version>-windows-x64.exe` and double-click. First
 run may show a SmartScreen warning — click **More info** → **Run anyway**
 (the binary is unsigned). A console window appears with the log; the UI opens
 in your default browser at `http://127.0.0.1:<random-port>/`.
@@ -74,10 +78,10 @@ python3.12 -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt  # or: pip install -e ".[dev]"
 python -m pytest tests/ -q       # 55 tests against the fixtures
-python -m mail_workbench         # opens the UI in your browser
+python -m chambua                # opens the UI in your browser
 ```
 
-Also installable as a console script: `pip install .` → `mail-workbench`.
+Also installable as a console script: `pip install .` → `chambua`.
 
 Developer flags: `--keep-workspace` (leave the session directory on disk for
 debugging), `--no-browser` (don't auto-open the browser).
@@ -88,13 +92,12 @@ PyInstaller onefile, one binary per OS (you cannot cross-compile):
 
 ```sh
 pip install -r requirements.txt   # includes pyinstaller
-pyinstaller mail-workbench.spec   # produces dist/mail-workbench
+pyinstaller chambua.spec          # produces dist/chambua
 ```
 
 Releases are built by `.github/workflows/release.yml` on `v*` tag push, with
 a matrix on `macos-latest` (primary) and `windows-latest`, attaching
-`mail-workbench-<version>-<os>` artifacts and SHA-256 sums to a GitHub
-Release.
+`chambua-<version>-<os>` artifacts and SHA-256 sums to a GitHub Release.
 
 Fixtures for the test suite are generated deterministically:
 `python tests/fixtures/generate_fixtures.py` (the generated files are
@@ -103,7 +106,7 @@ committed; re-run after editing the generator).
 ## Architecture
 
 ```
-mail_workbench/
+chambua/
   __main__.py     entry point: bind 127.0.0.1:0, open browser, wipe on exit
   server.py       FastAPI app, CSRF, Host-header check, CSP
   ingest.py       extension routing, zip handling, failure surfacing
@@ -118,12 +121,13 @@ mail_workbench/
   static/         vanilla HTML/CSS/JS frontend (no build step)
 ```
 
-Session state lives under `platformdirs.user_cache_dir("mail-workbench")/
+Session state lives under `platformdirs.user_cache_dir("chambua")/
 session-<pid>/` and is wiped on graceful shutdown; orphans older than 24 h
 are cleaned on next launch.
 
 ## Documented deviations from the brief
 
+- **Name:** the brief's "Mail Analysis Workbench" shipped as **Chambua**.
 - **DMARC re-verify** uses `dnspython` directly (fetch `_dmarc` TXT +
   relaxed alignment + policy) rather than `checkdmarc`'s domain-health API,
   which evaluates whole domains rather than this message's alignment.

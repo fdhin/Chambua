@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from mail_workbench.authresults import parse_authentication_results, summarize_dkim
-from mail_workbench.received import parse_transmission
-from mail_workbench.sanitize import PLACEHOLDER_IMG, sanitize_html
-from mail_workbench.urls import (
+from chambua.authresults import parse_authentication_results, summarize_dkim
+from chambua.received import parse_transmission
+from chambua.sanitize import PLACEHOLDER_IMG, sanitize_html
+from chambua.urls import (
     collect_urls,
     defang,
     extract_from_plaintext,

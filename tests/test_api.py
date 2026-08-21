@@ -13,7 +13,7 @@ from conftest import FIXTURES, upload
 def test_index_served(client):
     r = client.get("/")
     assert r.status_code == 200
-    assert "Mail Analysis Workbench" in r.text
+    assert "Chambua" in r.text
 
 
 def test_host_header_rejected(client):

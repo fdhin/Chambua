@@ -23,7 +23,7 @@ from .parse_eml import parse_eml
 from .parse_msg import parse_msg
 from .workspace import Workspace
 
-log = logging.getLogger("mail-workbench.ingest")
+log = logging.getLogger("chambua.ingest")
 
 SUPPORTED_EXTENSIONS = {".eml", ".msg", ".zip"}
 ZIP_CONVENTION_PASSWORD = b"infected"

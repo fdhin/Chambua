@@ -29,7 +29,7 @@ from pathlib import Path
 
 from platformdirs import user_cache_dir
 
-log = logging.getLogger("mail-workbench.workspace")
+log = logging.getLogger("chambua.workspace")
 
 ORPHAN_MAX_AGE_SECONDS = 24 * 3600
 
@@ -37,7 +37,7 @@ ORPHAN_MAX_AGE_SECONDS = 24 * 3600
 class Workspace:
     def __init__(self, keep: bool = False, cache_root: Path | None = None):
         self.keep = keep
-        self.cache_root = Path(cache_root) if cache_root else Path(user_cache_dir("mail-workbench"))
+        self.cache_root = Path(cache_root) if cache_root else Path(user_cache_dir("chambua"))
         self.cache_root.mkdir(parents=True, exist_ok=True)
         self._cleanup_orphans()
         # Distinct from PyInstaller's _MEIxxxxxx extraction dir and from

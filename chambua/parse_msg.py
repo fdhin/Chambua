@@ -22,7 +22,7 @@ from .received import parse_transmission
 from .sanitize import sanitize_html
 from .urls import collect_urls
 
-log = logging.getLogger("mail-workbench.parse_msg")
+log = logging.getLogger("chambua.parse_msg")
 
 
 def _decode_html_body(raw: bytes | None) -> str | None:

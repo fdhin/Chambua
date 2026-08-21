@@ -23,7 +23,7 @@ from .received import parse_transmission
 from .sanitize import sanitize_html
 from .urls import collect_urls
 
-log = logging.getLogger("mail-workbench.parse")
+log = logging.getLogger("chambua.parse")
 
 ARCHIVE_EXTENSIONS = {
     "zip", "rar", "7z", "tar", "gz", "bz2", "xz", "cab", "arj", "iso",

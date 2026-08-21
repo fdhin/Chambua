@@ -1,4 +1,4 @@
-/* Mail Analysis Workbench — vanilla JS, no framework, no build step. */
+/* Chambua — vanilla JS, no framework, no build step. */
 
 "use strict";
 
@@ -235,7 +235,7 @@ function updateEmptyState() {
 }
 
 function resetUi() {
-  $("#subject").textContent = "Drop a message to begin";
+  $("#subject").textContent = "Chambua — drop a message to begin";
   $("#subjectMeta").textContent = "Local analysis only — nothing leaves this machine";
   $("#btnPermalink").disabled = true;
   state.remoteLoaded = false;

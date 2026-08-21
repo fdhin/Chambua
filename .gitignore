@@ -6,4 +6,4 @@ dist/
 *.spec.bak
 .pytest_cache/
 .DS_Store
-mail_workbench.egg-info/
+chambua.egg-info/

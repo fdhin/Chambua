@@ -30,7 +30,7 @@ def _pick_port() -> tuple[socket.socket, int]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="mail-workbench",
+        prog="chambua",
         description="Local inspector for suspicious email messages",
     )
     parser.add_argument("--keep-workspace", action="store_true",
@@ -44,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
         stream=sys.stderr,
     )
-    log = logging.getLogger("mail-workbench")
+    log = logging.getLogger("chambua")
 
     workspace = Workspace(keep=args.keep_workspace)
     guard = CsrfGuard()
@@ -64,7 +64,7 @@ def main(argv: list[str] | None = None) -> int:
     app.state.server = server
 
     url = f"http://127.0.0.1:{port}/"
-    print(f"mail-workbench {__version__} listening on {url}", file=sys.stderr)
+    print(f"chambua {__version__} listening on {url}", file=sys.stderr)
     print(f"workspace: {workspace.root}", file=sys.stderr)
 
     if not args.no_browser:

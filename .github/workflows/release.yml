@@ -37,35 +37,35 @@ jobs:
         run: python -m pytest tests/ -q
 
       - name: Build binary
-        run: pyinstaller mail-workbench.spec
+        run: pyinstaller chambua.spec
 
       - name: Rename artifact (unix)
         if: runner.os != 'Windows'
         run: |
           VERSION=${GITHUB_REF_NAME#v}
-          cp dist/mail-workbench "mail-workbench-${VERSION}-${{ matrix.artifact_suffix }}"
-          shasum -a 256 "mail-workbench-${VERSION}-${{ matrix.artifact_suffix }}" > "mail-workbench-${VERSION}-${{ matrix.artifact_suffix }}.sha256"
+          cp dist/chambua "chambua-${VERSION}-${{ matrix.artifact_suffix }}"
+          shasum -a 256 "chambua-${VERSION}-${{ matrix.artifact_suffix }}" > "chambua-${VERSION}-${{ matrix.artifact_suffix }}.sha256"
 
       - name: Rename artifact (windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $VERSION = $env:GITHUB_REF_NAME.TrimStart('v')
-          Copy-Item dist/mail-workbench.exe "mail-workbench-$VERSION-${{ matrix.artifact_suffix }}.exe"
-          Get-FileHash "mail-workbench-$VERSION-${{ matrix.artifact_suffix }}.exe" -Algorithm SHA256 | `
-            ForEach-Object { "$($_.Hash)  mail-workbench-$VERSION-${{ matrix.artifact_suffix }}.exe" } | `
-            Out-File "mail-workbench-$VERSION-${{ matrix.artifact_suffix }}.exe.sha256" -Encoding ascii
+          Copy-Item dist/chambua.exe "chambua-$VERSION-${{ matrix.artifact_suffix }}.exe"
+          Get-FileHash "chambua-$VERSION-${{ matrix.artifact_suffix }}.exe" -Algorithm SHA256 | `
+            ForEach-Object { "$($_.Hash)  chambua-$VERSION-${{ matrix.artifact_suffix }}.exe" } | `
+            Out-File "chambua-$VERSION-${{ matrix.artifact_suffix }}.exe.sha256" -Encoding ascii
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mail-workbench-${{ matrix.artifact_suffix }}
+          name: chambua-${{ matrix.artifact_suffix }}
           path: |
-            mail-workbench-*${{ matrix.artifact_suffix }}*
-            !mail-workbench-*${{ matrix.artifact_suffix }}*.sha256
+            chambua-*${{ matrix.artifact_suffix }}*
+            !chambua-*${{ matrix.artifact_suffix }}*.sha256
 
       - name: Attach to release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            mail-workbench-*${{ matrix.artifact_suffix }}*
+            chambua-*${{ matrix.artifact_suffix }}*

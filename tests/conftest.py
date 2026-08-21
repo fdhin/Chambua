@@ -11,8 +11,8 @@ if str(ROOT) not in sys.path:
 
 FIXTURES = ROOT / "tests" / "fixtures"
 
-from mail_workbench.security import CsrfGuard  # noqa: E402
-from mail_workbench.workspace import Workspace  # noqa: E402
+from chambua.security import CsrfGuard  # noqa: E402
+from chambua.workspace import Workspace  # noqa: E402
 
 
 @pytest.fixture()
@@ -29,7 +29,7 @@ def fx():
 def client(tmp_path):
     from fastapi.testclient import TestClient
 
-    from mail_workbench.server import create_app
+    from chambua.server import create_app
 
     workspace = Workspace(keep=True, cache_root=tmp_path / "cache")
     guard = CsrfGuard()

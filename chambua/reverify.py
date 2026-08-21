@@ -14,7 +14,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-log = logging.getLogger("mail-workbench.reverify")
+log = logging.getLogger("chambua.reverify")
 
 TIMEOUT_SECONDS = 5.0
 

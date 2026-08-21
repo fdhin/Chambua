@@ -6,7 +6,7 @@ import os
 import time
 from pathlib import Path
 
-from mail_workbench.workspace import Workspace
+from chambua.workspace import Workspace
 
 
 def test_orphan_cleanup_on_startup(tmp_path):
