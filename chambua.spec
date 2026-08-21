@@ -7,7 +7,10 @@ a = Analysis(
     ["entry.py"],
     pathex=[],
     binaries=[],
-    datas=[("chambua/static", "static")],
+    datas=[
+        ("chambua/static", "static"),
+        ("chambua/data", "data"),
+    ],
     hiddenimports=[
         # uvicorn lazy-imports these based on the "standard" extras.
         "uvicorn.logging",

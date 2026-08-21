@@ -1,0 +1,18 @@
+Return-Path: <bounce@mailgun-esp.example>
+Received: from esp-out.mailgun-esp.example (esp-out.mailgun-esp.example [192.0.2.10])
+	by mx.corp.example with ESMTP; Mon, 17 Nov 2025 10:00:00 +0000
+Authentication-Results: mx.corp.example; spf=pass smtp.mailfrom=mailgun-esp.example
+From: "CEO" <ceo@supplier.example>
+Reply-To: ceo@supplier.example
+To: cfo@corp.example
+Subject: Re: urgent payment
+Date: Sat, 15 Nov 2025 04:00:00 +0000
+Message-ID: <sent-via@esp-node-77.somehost.example>
+X-Forefront-Antispam-Report: CIP:192.0.2.10;CTRY:US;LANG:en;SCL:5;SFV:SPM;IPV:NLI;SFTY:9.11;SFS:(1)(2);CAT:SPM;DIR:INB;PTR:esp-out.example;H:esp.example
+X-Microsoft-Antispam: BCL:7;
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Exchange-Organization-AuthMechanism: 07
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Please process the attached invoice urgently.

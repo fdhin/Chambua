@@ -19,8 +19,11 @@ from email.utils import getaddresses, parseaddr, parsedate_to_datetime
 from pathlib import Path
 
 from .authresults import parse_authentication_results
+from .attach_inspect import inspect_attachment
+from .dkim_depth import attach_depth
 from .received import parse_transmission
 from .sanitize import sanitize_html
+from .signals import compute_signals
 from .urls import collect_urls
 
 log = logging.getLogger("chambua.parse")
@@ -228,7 +231,7 @@ def parse_eml(
 
     for part in _iter_leaf_parts(msg):
         ctype = part.get_content_type()
-        disposition = (part.get("Content-Disposition") or "").lower()
+        disposition = str(part.get("Content-Disposition") or "").lower()
         filename = part.get_filename()
         if filename:
             filename = decode_value(filename) or filename
@@ -242,11 +245,11 @@ def parse_eml(
             if payload is None:
                 nested = part.get_payload()
                 payload = nested.as_bytes() if hasattr(nested, "as_bytes") else str(nested).encode("utf-8", "replace")
-            attachments.append(
-                _write_attachment(
-                    record_dir, filename or f"message-{len(attachments)}.eml", payload, ctype
-                )
+            record = _write_attachment(
+                record_dir, filename or f"message-{len(attachments)}.eml", payload, ctype
             )
+            record.update(inspect_attachment(payload, record["filename"], record["extension"]))
+            attachments.append(record)
             continue
         if ctype == "text/html" and html_body is None:
             payload, charset = _decode_part(part)
@@ -309,6 +312,12 @@ def parse_eml(
         },
         "parse_warnings": warnings or None,
     }
+
+    attach_depth(
+        authentication,
+        [decode_value(v) or "" for v in (msg.get_all("DKIM-Signature") or [])],
+    )
+    compute_signals(parsed)
 
     (record_dir / "parsed.json").write_text(json.dumps(parsed, indent=2), encoding="utf-8")
     return parsed

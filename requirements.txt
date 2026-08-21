@@ -9,6 +9,8 @@ checkdmarc==5.17.5
 dnspython==2.8.0
 bleach==6.4.0
 tinycss2==1.5.1
+oletools==0.60.2
+geoip2==5.3.0
 platformdirs==4.11.3
 python-multipart==0.0.32
 

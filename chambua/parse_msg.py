@@ -17,9 +17,12 @@ from email.utils import getaddresses, parseaddr, parsedate_to_datetime
 from pathlib import Path
 
 from .authresults import parse_authentication_results
+from .attach_inspect import inspect_attachment
+from .dkim_depth import attach_depth
 from .parse_eml import _address_field, _first_external_ip, _write_attachment, decode_value
 from .received import parse_transmission
 from .sanitize import sanitize_html
+from .signals import compute_signals
 from .urls import collect_urls
 
 log = logging.getLogger("chambua.parse_msg")
@@ -166,7 +169,9 @@ def parse_msg(
             if not isinstance(data, bytes):
                 data = str(data).encode("utf-8", "replace")
             ctype = getattr(att, "mimeType", None) or "application/octet-stream"
-            attachments.append(_write_attachment(record_dir, filename or "unnamed", data, ctype))
+            record = _write_attachment(record_dir, filename or "unnamed", data, ctype)
+            record.update(inspect_attachment(data, record["filename"], record["extension"]))
+            attachments.append(record)
         except Exception as exc:
             log.warning("failed to read attachment: %s", exc)
 
@@ -220,6 +225,12 @@ def parse_msg(
         },
         "parse_warnings": None,
     }
+
+    dkim_values = []
+    if header_msg is not None:
+        dkim_values = [decode_value(v) or "" for v in (header_msg.get_all("DKIM-Signature") or [])]
+    attach_depth(authentication, dkim_values)
+    compute_signals(parsed)
 
     (record_dir / "parsed.json").write_text(json.dumps(parsed, indent=2), encoding="utf-8")
     return parsed

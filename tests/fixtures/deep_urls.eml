@@ -1,0 +1,18 @@
+Return-Path: <billing@evil-example.com>
+From: Links <l@brand.example>
+To: alice@corp.example
+Subject: deep links
+Date: Mon, 17 Nov 2025 09:14:55 +0100
+Message-ID: <CAF123@evil-example.com>
+X-Microsoft-Antispam-Mailbox-Delivery: grhf:1|jaj:0
+X-Sender-IP: 203.0.113.66
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+https://bit.ly/3xYzAbC
+https://xn--pple-43d.com/login
+http://admin:secret@portal.brand.example/admin
+http://198.51.100.7/login
+https://portal.brand.example:8443/vpn
+data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==
+https://urldefense.proofpoint.com/v2/url?u=https%3A%2F%2Fportal%2Ebrand%2Eexample%2Flogin&d=DwIGaQ&c=V_0Sc3nrhRGoGQ&r=AAA&m=BBB&s=CCC&t=DDD

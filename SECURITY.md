@@ -40,6 +40,20 @@ embedded as attachments (RAR/7z/ZIP-in-ZIP) are flagged, not detonated.
 Zip extraction is capped (200 MB per member, 500 MB per archive) to blunt
 zip bombs, and never recurses more than one level.
 
+**v2 content inspection is parse-only.** Office macro detection runs
+oletools.olevba over the stored bytes — it parses VBA storage, never
+executes anything, and macro source code is deliberately not rendered in
+the UI (findings only). PDF anomaly markers are read from raw and
+zlib-inflated streams. Magic-byte sniffing is pure byte-prefix matching.
+URL unwrapping (SafeLinks, Proofpoint, Mimecast, Barracuda) is local
+string decoding — the wrapper's redirect target is never fetched.
+Suspicious-TLD and shortener lists are bundled static files refreshed per
+release; the app never fetches list updates. GeoIP, when an mmdb is
+present, is a local file lookup with no network. The only outbound
+requests in v2 remain: live Re-verify DNS (on click), DKIM key-length
+lookup (on click), Load-remote-content opt-in (on click), and VirusTotal
+link-outs (opened in the user's browser).
+
 **Network.** The HTTP server binds `127.0.0.1` only — never `0.0.0.0`, on
 an OS-assigned port. Requests with a `Host` header other than
 `127.0.0.1:<port>` / `localhost:<port>` are rejected (DNS-rebinding

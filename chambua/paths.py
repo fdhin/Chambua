@@ -16,3 +16,11 @@ def static_dir() -> Path:
     if frozen:
         return Path(frozen) / "static"
     return Path(__file__).resolve().parent / "static"
+
+
+def data_dir() -> Path:
+    """Bundled static data (abuse-TLD list, shortener list, optional mmdb)."""
+    frozen = getattr(sys, "_MEIPASS", None)
+    if frozen:
+        return Path(frozen) / "data"
+    return Path(__file__).resolve().parent / "data"

@@ -1,0 +1,52 @@
+# Abuse-associated top-level domains, bundled per release (v2 spec §3).
+# Union of:
+#   - Spamhaus "World's Most Abused TLDs" (quarterly; consulted 2026-08)
+#   - Interisle Consulting phishing landscape reports (annual)
+#   - Cloudflare Radar top-abuse TLDs (consulted 2026-08)
+#   - Historical persistent offenders, included regardless (v2 spec)
+# Flagging is NOT a verdict — legitimate use exists on every TLD here.
+# Refreshed with each Chambua release; never fetched live.
+top
+xyz
+zip
+mov
+click
+link
+rest
+cn
+tk
+ml
+ga
+cf
+gq
+icu
+cam
+surf
+bar
+fit
+beauty
+hair
+skin
+makeup
+mom
+cfd
+sbs
+monster
+lol
+quest
+cyou
+buzz
+wang
+xin
+help
+win
+support
+world
+live
+shop
+vip
+work
+website
+space
+srl
+boats

@@ -55,23 +55,52 @@ directory). Binary size is 40–80 MB.
 
 ## The inspector
 
-Left pane (six tabs): **Details** (headers: From/Sender/To/Cc/timestamps/
-Return-Path/originating IP/rDNS), **Authentication** (SPF/DKIM/DMARC as
-stamped by the receiving MTA, with on-demand live re-verification), **URLs**
-(defanged, with anchor-mismatch and differs-from-From-domain signals, filters
-and VirusTotal lookups; Microsoft SafeLinks URLs are automatically unwrapped
-— locally, by decoding the wrapper — so the pane shows the real target and
-the signals evaluate against it), **Attachments** (MD5/SHA-1/SHA-256,
-save-to-disk with confirmation, VirusTotal by hash), **Transmission**
-(Received chain as an oldest-first timeline), **X-headers** (searchable,
-full values, no truncation).
+Left pane (seven tabs). **Signals** comes first: the TL;DR rollup of every
+anomaly detected across the message, grouped by severity (High / Medium /
+Low / Info), each with an evidence excerpt and a "Jump to source →" link
+that switches to the relevant tab and highlights the item. "No anomalies
+detected" means exactly that — never a verdict of "safe".
+
+- **Details** — headers (From/Sender/To/Cc/timestamps/Return-Path/
+  originating IP/rDNS) plus a **Consistency** subsection: Message-ID vs
+  From, Reply-To vs From (classic BEC), Return-Path alignment, Sender,
+  Date-vs-Received skew and future-dating, each shown as passed (✓) or
+  flagged with severity.
+- **Authentication** — SPF/DKIM/DMARC as stamped by the receiving MTA,
+  on-demand live re-verification, and per-signature **DKIM depth**
+  (h= coverage of critical headers, l= body-length limit, t=y test mode,
+  SHA-1, canonicalization, expiry; key length via live DNS on demand).
+- **URLs** — defanged with copy buttons, anchor-mismatch and
+  differs-from-From-domain signals, filters (scheme, domain, dedupe,
+  only-with-signals, group-by-domain) and VirusTotal lookups. Microsoft
+  SafeLinks, Proofpoint URL Defense, Mimecast and Barracuda wrappers are
+  unwrapped locally (nested chains shown), and signals evaluate against
+  the real target. Deep inspection flags suspicious TLDs (bundled
+  per-release list), URL shorteners, IDN homoglyphs (mixed-script
+  hostnames), embedded credentials, IP-as-host, unusual ports, and
+  data: URI payloads.
+- **Attachments** — MD5/SHA-1/SHA-256, save-to-disk with confirmation,
+  VirusTotal by hash, plus content inspection: magic-byte detected type
+  vs extension (type mismatch), RTLO filenames with a
+  renders-vs-actual-bytes view, double/executable extensions, Office
+  macro detection via oletools.olevba (macros / AutoExec / suspicious
+  keywords, with a macro-details expander — no macro source rendered
+  inline), and PDF anomaly markers (JavaScript, OpenAction, embedded
+  files, launch actions).
+- **Transmission** — Received chain as an oldest-first timeline; with a
+  bundled mmdb (not shipped in v2 builds), each hop gains country and
+  ASN/organization context.
+- **X-headers** — searchable, full values, no truncation, with a decoded
+  **M365 anti-spam panel** for X-Forefront-Antispam-Report (SCL, SFV,
+  SFTY, CAT, CTRY, PTR, H …), X-Microsoft-Antispam (BCL), and the
+  X-MS-Exchange-Organization-* headers worth decoding.
 
 Right pane (four tabs): **Rendered** (sandboxed iframe, remote content
 blocked by default), **HTML** (syntax-highlighted source with search),
 **Plaintext**, **Source** (raw message bytes).
 
 Tabs grey out when the underlying data is absent; warning dots appear for
-authentication failures (red = hard fail, yellow = neutral/soft signals).
+high/medium signals and authentication failures.
 
 ## Running from source
 
@@ -116,10 +145,17 @@ chambua/
   parse_msg.py    extract-msg (.msg) → same schema
   authresults.py  Authentication-Results (RFC 8601) parsing
   received.py     Received-chain → transmission timeline
-  urls.py         URL extraction, defanging, IDN, phishing signals
+  urls.py         URL extraction, defanging, IDN, wrappers, deep flags
   sanitize.py     bleach + CSS sanitizer + remote-content blocking
+  consistency.py  header-consistency checks (Details + Signals)
+  m365.py         X-Forefront-Antispam-Report / M365 header decoding
+  attach_inspect.py  magic bytes, filename anomalies, macros, PDF markers
+  dkim_depth.py   DKIM h=/l=/t=/x= coverage analysis
+  geo.py          optional mmdb-based per-hop country/ASN context
+  signals.py      aggregated Signals rollup across all sources
   reverify.py     live SPF (pyspf) / DKIM (dkimpy) / DMARC, 5 s timeouts
   workspace.py    per-launch session dirs under the OS cache dir
+  data/           bundled abuse-TLD and shortener lists (per release)
   static/         vanilla HTML/CSS/JS frontend (no build step)
 ```
 
@@ -134,6 +170,13 @@ are cleaned on next launch.
   relaxed alignment + policy) rather than `checkdmarc`'s domain-health API,
   which evaluates whole domains rather than this message's alignment.
   `checkdmarc` remains pinned in the dependency set.
+- **GeoIP database** is not bundled with v2 builds (decision, 2026-08):
+  drop a MaxMind GeoLite2 or DB-IP Lite mmdb (`GeoLite2-City.mmdb` /
+  `GeoLite2-ASN.mmdb` or `dbip-*-lite.mmdb`) next to the app's data files
+  to enable per-hop country/ASN context — hops render normally without it.
+- **PDF anomaly scan** is a local raw+inflated-stream marker scan
+  (JavaScript / OpenAction / EmbeddedFile / Launch), since oletools 0.60
+  no longer ships `pdfid`.
 - Release CI builds both macOS and Windows, but macOS is the tested v1
   target per project decision; the Windows job ships as-is.
 

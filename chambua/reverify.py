@@ -57,6 +57,59 @@ def _check_spf(ip: str | None, return_path: str | None, from_domain: str | None)
         return {"result": "temperror", "note": str(exc), "fetched_at": _now()}
 
 
+def _rsa_key_bits(der: bytes) -> int | None:
+    """Modulus size in bits from a DER RSAPublicKey."""
+    def read_len(data: bytes, i: int) -> tuple[int, int]:
+        first = data[i]
+        i += 1
+        if first < 0x80:
+            return first, i
+        n = first & 0x7F
+        return int.from_bytes(data[i:i + n], "big"), i + n
+
+    try:
+        if der[0] != 0x30:
+            return None
+        _, i = read_len(der, 1)
+        if der[i] != 0x02:
+            return None
+        mlen, j = read_len(der, i + 1)
+        modulus = der[j:j + mlen].lstrip(b"\x00")
+        return len(modulus) * 8
+    except (IndexError, ValueError):
+        return None
+
+
+def _dkim_key_bits(selector: str | None, domain: str | None) -> int | None:
+    """Live DNS lookup of the signing key's modulus size (§8: only on
+    explicit Re-verify — keys rotate and this is a present-day fact)."""
+    if not selector or not domain:
+        return None
+
+    try:
+        answers = _resolver().resolve(f"{selector}._domainkey.{domain}", "TXT")
+    except Exception:
+        return None
+    for rdata in answers:
+        try:
+            txt = b"".join(rdata.strings).decode("utf-8", "replace")
+        except Exception:
+            continue
+        m = re.search(r"p=([A-Za-z0-9+/=\s]+)", txt)
+        if not m:
+            continue
+        try:
+            import base64
+
+            der = base64.b64decode("".join(m.group(1).split()))
+        except ValueError:
+            continue
+        bits = _rsa_key_bits(der)
+        if bits:
+            return bits
+    return None
+
+
 def _check_dkim(raw_message: bytes | None) -> dict:
     if raw_message is None:
         return {
@@ -94,6 +147,7 @@ def _check_dkim(raw_message: bytes | None) -> dict:
             k.decode("latin-1", "replace"): (v or b"").decode("latin-1", "replace").strip()
             for k, v in (verifier.signature_fields or {}).items()
         }
+        key_bits = _dkim_key_bits(fields.get("s"), fields.get("d"))
         sigs.append(
             {
                 "selector": fields.get("s") or None,
@@ -101,6 +155,7 @@ def _check_dkim(raw_message: bytes | None) -> dict:
                 "algorithm": fields.get("a") or None,
                 "verification": note,
                 "result": result,
+                "key_bits": key_bits,
             }
         )
     results = {s["result"] for s in sigs}

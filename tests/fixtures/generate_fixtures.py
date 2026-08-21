@@ -28,6 +28,129 @@ def safelink(target: str) -> str:
         "%7CUnknown%7C0%7C0%7C&sdata=SYNTHETIC%2BVALUE%3D%3D&reserved=0"
     )
 
+
+# ----------------------------------------------------------------------
+# minimal .docm builder (real MS-OVBA structure, benign AutoOpen macro)
+
+
+def _ovba_compress_raw(data: bytes) -> bytes:
+    """MS-OVBA raw-chunk compression: 0x01 signature, 0x3FFF header, 4095
+    literal bytes per chunk (olevba-compatible, no actual compression)."""
+    out = bytearray()
+    for i in range(0, len(data), 4095):
+        chunk = data[i:i + 4095]
+        if len(chunk) < 4095:
+            chunk = chunk + b"\x00" * (4095 - len(chunk))
+        out += b"\x01" + struct.pack("<H", 0x3FFF) + chunk
+    return bytes(out)
+
+
+def _ovba_rec(rid: int, payload: bytes) -> bytes:
+    return struct.pack("<HI", rid, len(payload)) + payload
+
+
+def _make_docm_with_autopen() -> bytes:
+    """A genuine minimal .docm: OOXML zip wrapping a hand-built vbaProject
+    (OLE) whose single module contains a benign AutoOpen macro."""
+    import zipfile
+
+    from extract_msg.ole_writer import OleWriter
+
+    code = (
+        b"Attribute VB_Name = \"Module1\"\r\n"
+        b"Sub AutoOpen()\r\n    MsgBox \"Chambua test fixture\"\r\nEnd Sub\r\n"
+    )
+    dir_stream = b"".join([
+        _ovba_rec(0x0001, struct.pack("<I", 2)),          # PROJECTSYSKIND
+        _ovba_rec(0x0002, struct.pack("<I", 0x409)),      # PROJECTLCID
+        _ovba_rec(0x0014, struct.pack("<I", 0x409)),      # PROJECTLCIDINVOKE
+        _ovba_rec(0x0003, struct.pack("<H", 0x04E4)),     # CODEPAGE 1252
+        _ovba_rec(0x0004, b"VBAProject"),                 # PROJECTNAME
+        _ovba_rec(0x0005, b"") + struct.pack("<HI", 0x0040, 0),  # DOCSTRING
+        _ovba_rec(0x0006, b"") + struct.pack("<HI", 0x003D, 0),  # HELPFILEPATH
+        _ovba_rec(0x0007, struct.pack("<I", 0)),          # HELPCONTEXT
+        _ovba_rec(0x0008, struct.pack("<I", 0)),          # LIBFLAGS
+        struct.pack("<HI", 0x0009, 4) + struct.pack("<IH", 1, 0),  # VERSION
+        _ovba_rec(0x000C, b"") + struct.pack("<HI", 0x003C, 0),    # CONSTANTS
+        struct.pack("<HIH", 0x000F, 2, 1),                # MODULES count=1
+        struct.pack("<HIH", 0x0013, 2, 0xFFFF),           # PROJECTCOOKIE
+        _ovba_rec(0x0019, b"Module1"),                    # MODULENAME
+        _ovba_rec(0x001A, b"Module1") + struct.pack("<HI", 0x0032, 0),  # STREAMNAME
+        _ovba_rec(0x0031, struct.pack("<I", 0)),          # MODULEOFFSET=0
+        struct.pack("<HI", 0x0021, 0),                    # MODULETYPE procedural
+        struct.pack("<HI", 0x002B, 0),                    # terminator
+    ])
+
+    writer = OleWriter()
+    writer.addEntry("VBA/dir", data=_ovba_compress_raw(dir_stream))
+    writer.addEntry("VBA/_VBA_PROJECT", data=b"\xcc\x61\xff\xff\x00")
+    writer.addEntry("VBA/Module1", data=_ovba_compress_raw(code))
+    writer.addEntry(
+        "PROJECT",
+        data=b'ID="{00000000-0000-0000-0000-000000000000}"\r\n'
+             b"Module=Module1\r\nName=\"VBAProject\"\r\n",
+    )
+    vba_bin = io.BytesIO()
+    writer.write(vba_bin)
+
+    docm = io.BytesIO()
+    with zipfile.ZipFile(docm, "w") as zf:
+        zf.writestr(
+            "[Content_Types].xml",
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            '<Default Extension="xml" ContentType="application/xml"/>'
+            '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+            '<Override PartName="/word/vbaProject.bin" ContentType="application/vnd.ms-office.vbaProject"/>'
+            "</Types>",
+        )
+        zf.writestr(
+            "_rels/.rels",
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'
+            "</Relationships>",
+        )
+        zf.writestr(
+            "word/document.xml",
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            "<w:body><w:p><w:r><w:t>Chambua macro fixture</w:t></w:r></w:p></w:body></w:document>",
+        )
+        zf.writestr("word/vbaProject.bin", vba_bin.getvalue())
+    return docm.getvalue()
+
+
+def _make_clean_docx() -> bytes:
+    import zipfile
+
+    docx = io.BytesIO()
+    with zipfile.ZipFile(docx, "w") as zf:
+        zf.writestr(
+            "[Content_Types].xml",
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            '<Default Extension="xml" ContentType="application/xml"/>'
+            '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+            "</Types>",
+        )
+        zf.writestr(
+            "_rels/.rels",
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'
+            "</Relationships>",
+        )
+        zf.writestr(
+            "word/document.xml",
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            "<w:body><w:p><w:r><w:t>No macros here</w:t></w:r></w:p></w:body></w:document>",
+        )
+    return docx.getvalue()
+
 # ----------------------------------------------------------------------
 # shared message content
 
@@ -234,6 +357,145 @@ def build_all() -> None:
         '<img src="https://click.marketing.example/open.gif?u=alice" width="1" height="1">'
         "</body></html>",
         mime="text/html",
+    )
+
+    # ---------------------------------------------------------------- v2
+
+    # v2-1. suspicious TLDs (.top/.xyz/.zip flagged; .com/.dk/.no clean)
+    tld_headers = rfc822_headers({
+        "subject": "TLD mix test",
+        "from": "Shop <shop@brand.example>",
+        "auth_results": None,
+        "reply_to": None,
+    })
+    write_eml(
+        "abuse_tlds.eml",
+        tld_headers,
+        "Links:\n"
+        "https://shop-deals.top/offer\n"
+        "https://secure-login.xyz/auth\n"
+        "https://backup-archive.zip/download\n"
+        "https://www.brand.example/products\n"
+        "https://safe.example.dk/info\n"
+        "https://safe.example.no/info\n",
+    )
+
+    # v2-2. consistency anomalies: Message-ID ≠ From, Date 30h before
+    # first Received, future-dated Date.
+    consistency_headers = (
+        "Return-Path: <bounce@mailgun-esp.example>\n"
+        "Received: from esp-out.mailgun-esp.example (esp-out.mailgun-esp.example [192.0.2.10])\n"
+        "\tby mx.corp.example with ESMTP; Mon, 17 Nov 2025 10:00:00 +0000\n"
+        "Authentication-Results: mx.corp.example; spf=pass smtp.mailfrom=mailgun-esp.example\n"
+        "From: \"CEO\" <ceo@supplier.example>\n"
+        "Reply-To: ceo@supplier.example\n"
+        "To: cfo@corp.example\n"
+        "Subject: Re: urgent payment\n"
+        # 30h earlier than the Received hop, and also "future" relative to
+        # a second fixture use; Date below is 2025-11-15 04:00 UTC.
+        "Date: Sat, 15 Nov 2025 04:00:00 +0000\n"
+        "Message-ID: <sent-via@esp-node-77.somehost.example>\n"
+        "X-Forefront-Antispam-Report: CIP:192.0.2.10;CTRY:US;LANG:en;SCL:5;"
+        "SFV:SPM;IPV:NLI;SFTY:9.11;SFS:(1)(2);CAT:SPM;DIR:INB;PTR:esp-out.example;H:esp.example\n"
+        "X-Microsoft-Antispam: BCL:7;\n"
+        "X-MS-Exchange-Organization-AuthAs: Anonymous\n"
+        "X-MS-Exchange-Organization-AuthMechanism: 07\n"
+        "MIME-Version: 1.0\n"
+    )
+    (FIXTURES / "consistency_m365.eml").write_text(
+        consistency_headers + "Content-Type: text/plain; charset=utf-8\n\n"
+        "Please process the attached invoice urgently.\n",
+        encoding="utf-8",
+    )
+
+    # v2-4/6. attachments: RTLO exe, fake pdf (actually exe bytes), real
+    # small pdf with OpenAction, docm with benign AutoOpen macro.
+    rtlo_name = "invoice\u202efdp.exe"
+    nested = (
+        "Return-Path: <b@evil-example.com>\n"
+        "From: b@evil-example.com\nTo: a@corp.example\nSubject: attachments\n"
+        "Date: Mon, 17 Nov 2025 09:00:00 +0000\nMessage-ID: <v2att@evil-example.com>\n"
+        "MIME-Version: 1.0\n"
+        'Content-Type: multipart/mixed; boundary="V2A"\n\n'
+    )
+    exe_bytes = b"MZ\x90\x00" + b"\x00" * 128 + b"payload"
+    pdf_with_openaction = (
+        b"%PDF-1.4\n1 0 obj<</Type/Catalog/OpenAction 2 0 R>>endobj\n"
+        b"2 0 obj<</S/JavaScript/JS(app.alert(1))>>endobj\n"
+        b"trailer<</Root 1 0 R>>\n%%EOF"
+    )
+    macro_docm = _make_docm_with_autopen()
+    parts = [
+        '--V2A\nContent-Type: text/plain; charset=utf-8\n\nsee attached\n',
+        ('--V2A\nContent-Type: application/octet-stream\n'
+         "Content-Disposition: attachment;\n"
+         "\tfilename*=utf-8''invoice%E2%80%AEfdp.exe\n\n").encode("utf-8")
+        + exe_bytes + b"\n",
+        '--V2A\nContent-Type: application/pdf; name="report.pdf"\n'
+        'Content-Disposition: attachment; filename="report.pdf"\n\n'.encode("utf-8")
+        + pdf_with_openaction + b"\n",
+        '--V2A\nContent-Type: application/vnd.ms-word.document.macroEnabled.12; name="notes.docm"\n'
+        'Content-Disposition: attachment; filename="notes.docm"\n\n'.encode("utf-8")
+        + macro_docm + b"\n",
+        '--V2A\nContent-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document; name="clean.docx"\n'
+        'Content-Disposition: attachment; filename="clean.docx"\n\n'.encode("utf-8")
+        + _make_clean_docx() + b"\n",
+        '--V2A\nContent-Type: application/pdf; name="statement.pdf"\n'
+        'Content-Disposition: attachment; filename="statement.pdf"\n\n'.encode("utf-8")
+        + exe_bytes + b"\n",  # .pdf that is actually an EXE
+        "--V2A--\n",
+    ]
+    (FIXTURES / "attachment_anomalies.eml").write_bytes(
+        nested.encode("utf-8") + b"".join(p if isinstance(p, bytes) else p.encode("utf-8") for p in parts)
+    )
+
+    # v2-5. URL deep inspection: shortener, IDN homoglyph, credentials,
+    # IP host, port, data URI, Proofpoint wrapper.
+    deep_headers = rfc822_headers({
+        "subject": "deep links",
+        "from": "Links <l@brand.example>",
+        "auth_results": None,
+        "reply_to": None,
+        "received": None,
+    })
+    pp_wrapped = (
+        "https://urldefense.proofpoint.com/v2/url?u="
+        + quote("https://portal.brand.example/login", safe="").replace(".", "%2E")
+        + "&d=DwIGaQ&c=V_0Sc3nrhRGoGQ&r=AAA&m=BBB&s=CCC&t=DDD"
+    )
+    write_eml(
+        "deep_urls.eml",
+        deep_headers,
+        "https://bit.ly/3xYzAbC\n"
+        "https://xn--pple-43d.com/login\n"
+        "http://admin:secret@portal.brand.example/admin\n"
+        "http://198.51.100.7/login\n"
+        "https://portal.brand.example:8443/vpn\n"
+        "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==\n"
+        f"{pp_wrapped}\n",
+    )
+
+    # v2-8. DKIM depth: signature missing From in h=, l= tag, t=y.
+    dkim_sig = (
+        "DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=esp.example;\n"
+        "\ts=beta; l=200; t=y; h=to:subject:date:message-id;\n"
+        "\tbh=AAAA; b=BBBB"
+    )
+    dkim_headers = (
+        "Return-Path: <bounce@esp.example>\n"
+        "Received: from out.esp.example (out.esp.example [192.0.2.20])\n"
+        "\tby mx.corp.example with ESMTP; Mon, 17 Nov 2025 11:00:00 +0000\n"
+        'From: "ESP" <news@esp.example>\n'
+        "To: a@corp.example\nSubject: newsletter\n"
+        "Date: Mon, 17 Nov 2025 10:59:00 +0000\n"
+        "Message-ID: <dkimtest@esp.example>\n"
+        + dkim_sig + "\n"
+        "MIME-Version: 1.0\n"
+    )
+    (FIXTURES / "dkim_depth.eml").write_text(
+        dkim_headers + "Content-Type: text/plain; charset=utf-8\n\n"
+        "Signed newsletter body.\n",
+        encoding="utf-8",
     )
 
     # 9. anchor mismatch phish

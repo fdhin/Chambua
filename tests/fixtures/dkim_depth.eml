@@ -1,0 +1,15 @@
+Return-Path: <bounce@esp.example>
+Received: from out.esp.example (out.esp.example [192.0.2.20])
+	by mx.corp.example with ESMTP; Mon, 17 Nov 2025 11:00:00 +0000
+From: "ESP" <news@esp.example>
+To: a@corp.example
+Subject: newsletter
+Date: Mon, 17 Nov 2025 10:59:00 +0000
+Message-ID: <dkimtest@esp.example>
+DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; d=esp.example;
+	s=beta; l=200; t=y; h=to:subject:date:message-id;
+	bh=AAAA; b=BBBB
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Signed newsletter body.

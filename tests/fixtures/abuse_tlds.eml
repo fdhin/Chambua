@@ -1,0 +1,22 @@
+Return-Path: <billing@evil-example.com>
+Received: from mx.receiver.example (mx.receiver.example [198.51.100.9])
+	by mail.corp.example with ESMTPS id abc123; Mon, 17 Nov 2025 09:15:02 +0100
+Received: from vps-attacker.host (vps-attacker.host [203.0.113.66])
+	by mx.receiver.example with ESMTP id def456; Mon, 17 Nov 2025 09:15:01 +0100
+From: Shop <shop@brand.example>
+To: alice@corp.example
+Subject: TLD mix test
+Date: Mon, 17 Nov 2025 09:14:55 +0100
+Message-ID: <CAF123@evil-example.com>
+X-Microsoft-Antispam-Mailbox-Delivery: grhf:1|jaj:0
+X-Sender-IP: 203.0.113.66
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Links:
+https://shop-deals.top/offer
+https://secure-login.xyz/auth
+https://backup-archive.zip/download
+https://www.brand.example/products
+https://safe.example.dk/info
+https://safe.example.no/info

@@ -12,9 +12,9 @@ const state = {
   currentId: null,
   parsed: null,
   remoteLoaded: false,
-  urlFilter: { scheme: "all", domain: "", dedupe: true },
+  urlFilter: { scheme: "all", domain: "", dedupe: true, onlySignals: false, groupByDomain: false },
   raw: {}, // raw text for the right-pane tabs: {html, plaintext, source}
-  leftTab: "details",
+  leftTab: "signals",
   rightTab: "rendered",
 };
 
@@ -271,6 +271,7 @@ async function selectRecord(id) {
   $("#subjectMeta").textContent = metaBits.join("  ·  ") || rec.source_file || "";
   $("#btnPermalink").disabled = false;
   renderFileList();
+  renderSignals();
   renderDetails();
   renderAuth();
   renderUrls();
@@ -306,9 +307,13 @@ function updateTabStates() {
   tabButton("right", "source").disabled = !p;
 
   // Warning dots: red for hard fail, yellow for neutral/soft signals.
+  clearDot("left", "signals");
   clearDot("left", "auth");
   clearDot("left", "urls");
   if (p) {
+    const signals = p.signals || [];
+    if (signals.some((s) => s.severity === "high")) setDot("left", "signals", "red");
+    else if (signals.some((s) => s.severity === "medium")) setDot("left", "signals", "yellow");
     const auth = p.authentication || {};
     const authResults = [
       auth.spf?.result,
@@ -351,6 +356,61 @@ function pickInitialRightTab() {
   else switchTab("right", "source");
 }
 
+/* ---------- left pane: signals ---------- */
+
+const SEVERITY_LABEL = { high: "High", medium: "Medium", low: "Low", info: "Info" };
+const SEVERITY_CLASS = { high: "red", medium: "orange", low: "yellow", info: "grey" };
+
+function renderSignals() {
+  const panel = $('#leftPanels .panel[data-panel="signals"]');
+  const p = state.parsed;
+  if (!p) { panel.innerHTML = ""; return; }
+  const signals = p.signals || [];
+  if (!signals.length) {
+    panel.innerHTML = `
+      <div class="empty-tab">
+        <span class="pill pass">NO ANOMALIES DETECTED</span>
+        <div style="margin-top:10px">No parseable anomalies found — this is not
+        a verdict of “safe”. A message can be clean of detectable signals and
+        still be malicious.</div>
+      </div>`;
+    return;
+  }
+  const groups = ["high", "medium", "low", "info"].filter(
+    (sev) => signals.some((s) => s.severity === sev)
+  );
+  let html = "";
+  for (const sev of groups) {
+    html += `<div class="severity-head severity-${sev}">${SEVERITY_LABEL[sev]}</div>`;
+    for (const s of signals.filter((x) => x.severity === sev)) {
+      html += `
+        <div class="signal-row severity-${sev}">
+          <span class="pill ${SEVERITY_CLASS[sev]}">${SEVERITY_LABEL[sev].toUpperCase()}</span>
+          <div class="signal-main">
+            <div class="signal-name">${esc(s.name)}</div>
+            <div class="signal-evidence">${esc(s.evidence)}</div>
+          </div>
+          <button class="linkish signal-jump" data-tab="${esc(s.tab)}" data-anchor="${esc(s.anchor || "")}">Jump to source &rarr;</button>
+        </div>`;
+    }
+  }
+  panel.innerHTML = html;
+  panel.querySelectorAll(".signal-jump").forEach((btn) =>
+    btn.addEventListener("click", () => jumpToSource(btn.dataset.tab, btn.dataset.anchor)));
+}
+
+function jumpToSource(tab, anchor) {
+  if (tab) switchTab("left", tab);
+  if (!anchor) return;
+  requestAnimationFrame(() => {
+    const el = document.querySelector(`[data-anchor="${CSS.escape(anchor)}"]`);
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.classList.add("flash");
+    setTimeout(() => el.classList.remove("flash"), 1600);
+  });
+}
+
 /* ---------- left pane: details ---------- */
 
 function kvRow(label, value, opts = {}) {
@@ -384,6 +444,22 @@ function renderDetails() {
   html += kvRow("Originating IP", d.originating_ip);
   html += kvRow("rDNS", d.rdns);
   html += "</div>";
+
+  const checks = p.consistency || [];
+  if (checks.length) {
+    html += '<div class="subsection-title">Consistency</div><div class="kv-grid">';
+    for (const c of checks) {
+      const slug = c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      const mark = c.status === "passed"
+        ? '<span class="check-ok" title="' + esc(c.explanation) + '">&#10003;</span>'
+        : `<span class="check-flag severity-dot-${c.severity}" title="${esc(c.explanation)}"></span>`;
+      html += `<div class="k">${esc(c.name)}</div>
+        <div class="v plain" data-anchor="check-${slug}">${mark}
+          <span class="${c.status === "passed" ? "muted" : ""}">${esc(c.explanation)}</span>
+        </div>`;
+    }
+    html += "</div>";
+  }
   panel.innerHTML = html;
 }
 
@@ -445,6 +521,30 @@ function renderAuth() {
     dkimBody = `<div class="small muted" style="margin-bottom:8px">${esc(summary)}</div>`;
     if (live && live.dkim?.note) dkimBody += `<div class="note">${esc(live.dkim.note)}</div>`;
     for (const [i, s] of sigs.entries()) {
+      const depth = s.depth;
+      let depthHtml = "";
+      if (depth) {
+        const critical = ["from", "subject", "to", "date", "message-id"];
+        const chips = critical.map((h) => {
+          const signed = (depth.h || []).includes(h);
+          return `<span class="badge ${signed ? "green" : "red"}" title="${signed ? "signed" : "NOT signed"}">${esc(h)}</span>`;
+        });
+        const depthWarnings = (depth.warnings || []);
+        depthHtml = `
+          <button class="hop-toggle dkim-depth-toggle" style="padding:0 12px 8px">Show DKIM depth &#9662;</button>
+          <div class="dkim-depth" data-anchor="sig-${i}">
+            <div style="padding:2px 12px 6px"><span class="muted small">Signed headers (h=):</span> ${chips.join(" ")}</div>
+            <div class="kv-grid" style="border:none">
+              ${kvRow("Body length limit (l=)", depth.l != null ? String(depth.l) : null)}
+              ${kvRow("Test mode (t=)", depth.t)}
+              ${kvRow("Algorithm (a=)", depth.a)}
+              ${kvRow("Canonicalization (c=)", depth.c)}
+              ${depth.x ? kvRow("Expires (x=)", (depth.x_expired ? "EXPIRED " : "") + fmtDate(depth.x)) : ""}
+              ${s.key_bits != null ? kvRow("Key length (live DNS)", s.key_bits + " bits" + (s.key_bits < 2048 ? " — weak" : "")) : ""}
+            </div>
+            ${depthWarnings.length ? `<div style="padding:2px 12px 8px">${depthWarnings.map((w) => `<div class="small" style="color:var(--orange)">&#9888; ${esc(w)}</div>`).join("")}</div>` : ""}
+          </div>`;
+      }
       dkimBody += `<div class="section" style="margin:0 0 8px">
         <div class="section-head" style="padding:7px 12px">
           Signature ${i + 1} ${pillFor(s.result)}
@@ -456,6 +556,7 @@ function renderAuth() {
           ${kvRow("Algorithm", s.algorithm)}
           ${kvRow("Verification", s.verification)}
         </div></div>
+        ${depthHtml}
       </div>`;
     }
   }
@@ -498,6 +599,12 @@ function renderAuth() {
 
   panel.querySelectorAll(".btn-reverify").forEach((btn) =>
     btn.addEventListener("click", () => runReverify(btn)));
+  panel.querySelectorAll(".dkim-depth-toggle").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      const target = btn.parentElement.querySelector(".dkim-depth");
+      const open = target.classList.toggle("open");
+      btn.innerHTML = "Show DKIM depth " + (open ? "&#9652;" : "&#9662;");
+    }));
 }
 
 async function runReverify(btn) {
@@ -546,15 +653,29 @@ function renderUrls() {
     const needle = f.domain.toLowerCase();
     list = list.filter((u) => (u.domain || "").toLowerCase().includes(needle));
   }
+  const hasSignals = (u) =>
+    (u.flags && u.flags.length) || u.anchor_mismatch || u.differs_from_from_domain;
+  if (f.onlySignals) list = list.filter(hasSignals);
 
-  const rows = list.map((u) => {
+  const index = new Map();
+  urls.forEach((u, i) => index.set(u, i));
+
+  const urlCard = (u) => {
+    const i = index.get(u);
     const domainCell = esc(u.domain || "—");
     const badges = [
-      u.unwrapped ? '<span class="badge blue">SafeLinks</span>' : "",
+      (u.wrapper_chain && u.wrapper_chain.length > 2) || u.unwrapped && !/safelinks/.test(u.url)
+        ? '<span class="badge blue">Rewrapped</span>'
+        : u.unwrapped ? '<span class="badge blue">SafeLinks</span>' : "",
+      ...(u.flags || []).map((fl) =>
+        `<span class="badge ${SEVERITY_CLASS[fl.severity] || "grey"}" title="${esc(fl.detail)}">${esc(fl.label)}</span>`),
       u.anchor_mismatch ? '<span class="badge red">Anchor mismatch</span>' : "",
-      u.differs_from_from_domain ? '<span class="badge yellow">&ne; From domain</span>' : "",
+      !u.anchor_mismatch && u.differs_from_from_domain ? '<span class="badge yellow">&ne; From domain</span>' : "",
     ].filter(Boolean).join(" ");
-    return `<div class="url-card">
+    const chain = (u.wrapper_chain && u.wrapper_chain.length > 2)
+      ? `<div class="url-anchor">Wrapper chain:<ol class="chain-list">${u.wrapper_chain.map((c) => `<li><code>${esc(c)}</code></li>`).join("")}</ol></div>`
+      : "";
+    return `<div class="url-card" data-anchor="url-${i}">
       <div class="url-raw">${esc(u.url)}</div>
       <div class="url-meta">
         <span><span class="muted">Domain:</span> <span class="mono">${domainCell}</span></span>
@@ -562,6 +683,7 @@ function renderUrls() {
         ${badges}
       </div>
       ${u.anchor_text ? `<div class="url-anchor">Anchor text: <code>${esc(u.anchor_text)}</code></div>` : ""}
+      ${chain}
       ${u.unwrapped ? `
       <div class="url-anchor">Unwrapped target: <code>${esc(u.unwrapped)}</code></div>
       <div class="url-defang">
@@ -574,7 +696,24 @@ function renderUrls() {
         <button class="linkish vt-url" data-vt="${esc(u.unwrapped || u.url)}">Look up on VirusTotal</button>
       </div>
     </div>`;
-  }).join("");
+  };
+
+  let rows;
+  if (f.groupByDomain) {
+    const groups = new Map();
+    for (const u of list) {
+      const key = (u.domain || "(no domain)").split(".").slice(-2).join(".");
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(u);
+    }
+    rows = [...groups.entries()].map(([key, group]) => `
+      <div class="domain-group">
+        <div class="domain-group-head">${esc(key)} <span class="muted small">(${group.length})</span></div>
+        ${group.map(urlCard).join("")}
+      </div>`).join("");
+  } else {
+    rows = list.map(urlCard).join("");
+  }
 
   panel.innerHTML = `
     <div class="filter-bar">
@@ -587,6 +726,8 @@ function renderUrls() {
       </select>
       <input type="text" id="urlDomain" placeholder="Domain contains…">
       <label><input type="checkbox" id="urlDedupe" checked> Dedupe</label>
+      <label><input type="checkbox" id="urlOnlySignals"> Only with signals</label>
+      <label><input type="checkbox" id="urlGroup"> Group by domain</label>
       <span class="small muted">${list.length} of ${urls.length}</span>
     </div>
     ${rows}`;
@@ -594,12 +735,18 @@ function renderUrls() {
   const schemeSel = $("#urlScheme");
   const domainIn = $("#urlDomain");
   const dedupeCb = $("#urlDedupe");
+  const onlyCb = $("#urlOnlySignals");
+  const groupCb = $("#urlGroup");
   schemeSel.value = f.scheme;
   domainIn.value = f.domain;
   dedupeCb.checked = f.dedupe;
+  onlyCb.checked = f.onlySignals;
+  groupCb.checked = f.groupByDomain;
   schemeSel.addEventListener("change", () => { f.scheme = schemeSel.value; renderUrls(); });
   domainIn.addEventListener("input", debounce(() => { f.domain = domainIn.value.trim(); renderUrls(); }, 200));
   dedupeCb.addEventListener("change", () => { f.dedupe = dedupeCb.checked; renderUrls(); });
+  onlyCb.addEventListener("change", () => { f.onlySignals = onlyCb.checked; renderUrls(); });
+  groupCb.addEventListener("change", () => { f.groupByDomain = groupCb.checked; renderUrls(); });
   panel.querySelectorAll("[data-copy]").forEach((b) =>
     b.addEventListener("click", () => copyText(b.dataset.copy, "Defanged URL")));
   panel.querySelectorAll(".vt-url").forEach((b) =>
@@ -617,26 +764,54 @@ function renderAttachments() {
     panel.innerHTML = '<div class="empty-tab">No attachments</div>';
     return;
   }
-  panel.innerHTML = atts.map((a, i) => `
-    <div class="att-card">
+  panel.innerHTML = atts.map((a, i) => {
+    const flags = a.flags || [];
+    const flagPills = flags.map((f) =>
+      `<span class="badge ${SEVERITY_CLASS[f.severity] || "grey"}" title="${esc(f.detail)}">${esc(f.label)}</span>`
+    ).join(" ");
+    const macroFindings = (a.macro_details && a.macro_details.findings) || [];
+    return `
+    <div class="att-card" data-anchor="att-${i}">
       <div class="att-head">
         <span class="att-num">${i + 1}.</span>
         <span class="att-name">${esc(a.filename)}</span>
+        ${flagPills ? `<span>${flagPills}</span>` : ""}
         <span class="att-type">${esc((a.extension || a.mime_type || "?").toUpperCase())}</span>
       </div>
+      ${a.filename && /[\u202e]/.test(a.filename) ? `
+      <div class="att-rtlo">
+        How it renders: <code>${esc(a.filename.replace(/\u202e/g, "\u21c4"))}</code>
+        &nbsp;&harr;&nbsp; actual bytes: <code>${esc(a.filename.replace(/\u202e/g, "\u200e\u25c0\u202e"))}</code>
+      </div>` : ""}
       <div class="att-body">
         <div class="att-row"><span class="lbl">Size</span><span>${esc(fmtBytes(a.size_bytes))}</span><span></span></div>
         <div class="att-row"><span class="lbl">Type</span><span>${esc(a.mime_type || "—")}</span><span></span></div>
+        <div class="att-row"><span class="lbl">Detected</span><span>${esc(a.detected_type || "unknown")}</span><span></span></div>
         <div class="att-row"><span class="lbl">MD5</span><span>${esc(a.md5)}</span><button class="copy-btn" data-copy="${esc(a.md5)}">Copy</button></div>
         <div class="att-row"><span class="lbl">SHA-1</span><span>${esc(a.sha1)}</span><button class="copy-btn" data-copy="${esc(a.sha1)}">Copy</button></div>
         <div class="att-row"><span class="lbl">SHA-256</span><span>${esc(a.sha256)}</span><button class="copy-btn" data-copy="${esc(a.sha256)}">Copy</button></div>
         ${a.notes ? `<div class="warn-banner" style="margin:8px 0 0">&#9888; ${esc(a.notes)}</div>` : ""}
+        ${macroFindings.length ? `
+          <button class="hop-toggle att-macro-toggle" style="padding-left:0">Macro details &#9662;</button>
+          <div class="att-macro">
+            ${macroFindings.map((f) => `
+              <div class="att-row"><span class="lbl">${esc(f.kind)}</span>
+                <span>${esc(f.where)}: ${esc(f.detail)}</span><span></span></div>`).join("")}
+          </div>` : ""}
         <div class="att-actions">
           <button class="linkish vt-file" data-sha="${esc(a.sha256)}">Look up on VirusTotal</button>
           <button class="linkish save-att" data-sha="${esc(a.sha256)}" data-name="${esc(a.filename)}">Save to disk</button>
         </div>
       </div>
-    </div>`).join("");
+    </div>`;
+  }).join("");
+
+  panel.querySelectorAll(".att-macro-toggle").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      const target = btn.parentElement.querySelector(".att-macro");
+      const open = target.classList.toggle("open");
+      btn.innerHTML = "Macro details " + (open ? "&#9652;" : "&#9662;");
+    }));
 
   panel.querySelectorAll("[data-copy]").forEach((b) =>
     b.addEventListener("click", () => copyText(b.dataset.copy, "Hash")));
@@ -658,6 +833,16 @@ function endpointText(ep) {
   if (!ep) return null;
   const host = ep.host || "unknown host";
   return ep.ip ? `${host} (${ep.ip})` : host;
+}
+
+function geoLine(geo) {
+  if (!geo) return "";
+  if (geo.private) return `<div class="hop-endpoint"><span class="he-lbl">Geo</span><span class="he-val muted">private/internal address</span></div>`;
+  const bits = [];
+  if (geo.country_code) bits.push(`${geo.country_name || geo.country_code} (${geo.country_code})`);
+  if (geo.asn) bits.push(`${geo.asn}${geo.asn_org ? " — " + geo.asn_org : ""}`);
+  if (!bits.length) return "";
+  return `<div class="hop-endpoint"><span class="he-lbl">Geo / ASN</span><span class="he-val">${esc(bits.join(" · "))}</span></div>`;
 }
 
 function renderTransmission() {
@@ -689,14 +874,16 @@ function renderTransmission() {
       ["rDNS", hop.received_from?.rdns],
     ].filter(([, v]) => v);
     html += `
-      <div class="hop">
+      <div class="hop" data-anchor="hop-${hop.hop}">
         <div class="hop-head">
           <span class="hop-num">HOP ${hop.hop}</span>
           <span class="hop-ts">${esc(fmtDate(hop.timestamp) || "—")}</span>
         </div>
         <div class="hop-endpoints">
           <div class="hop-endpoint"><span class="he-lbl">Received from</span><span class="he-val">${esc(endpointText(hop.received_from) || "—")}</span></div>
+          ${geoLine(hop.received_from?.geo)}
           <div class="hop-endpoint"><span class="he-lbl">Received by</span><span class="he-val">${esc(endpointText(hop.received_by) || "—")}</span></div>
+          ${geoLine(hop.received_by?.geo)}
         </div>
         ${more.length ? `<button class="hop-toggle" data-target="more">More &#9662;</button>` : ""}
         <div class="hop-more">${more.map(([k, v]) =>
@@ -734,6 +921,33 @@ function renderXHeaders() {
     panel.innerHTML = '<div class="empty-tab">No X- headers in this message</div>';
     return;
   }
+  let decodedHtml = "";
+  const decoded = p.m365_decoded;
+  if (decoded) {
+    decodedHtml = '<div class="section decoded-panel" data-anchor="m365-decoded"><div class="section-head">M365 anti-spam — decoded</div>';
+    const fieldRow = (f) => f && f.value
+      ? `<div class="xh-row"><div class="xh-name">${esc(f.label)}</div>
+         <div class="xh-value">${esc(f.value)}${f.expand ? ` <span class="muted">— ${esc(f.expand)}</span>` : ""}</div></div>`
+      : "";
+    if (decoded.forefront) {
+      decodedHtml += '<div class="section-body" style="padding-top:6px"><div class="small muted" style="margin:2px 0 6px">X-Forefront-Antispam-Report</div>';
+      for (const key of ["CIP", "CTRY", "LANG", "SCL", "SFV", "IPV", "SFTY", "SFS", "CAT", "DIR", "PTR", "H", "SRV"]) {
+        decodedHtml += fieldRow(decoded.forefront[key]);
+      }
+      decodedHtml += "</div>";
+    }
+    if (decoded.antispam) {
+      decodedHtml += '<div class="section-body" style="padding-top:6px"><div class="small muted" style="margin:2px 0 6px">X-Microsoft-Antispam</div>';
+      decodedHtml += fieldRow(decoded.antispam.BCL);
+      decodedHtml += "</div>";
+    }
+    if (decoded.exchange_org && Object.keys(decoded.exchange_org).length) {
+      decodedHtml += '<div class="section-body" style="padding-top:6px"><div class="small muted" style="margin:2px 0 6px">X-MS-Exchange-Organization</div>';
+      for (const f of Object.values(decoded.exchange_org)) decodedHtml += fieldRow(f);
+      decodedHtml += "</div>";
+    }
+    decodedHtml += "</div>";
+  }
   let list = headers;
   let count = headers.length;
   if (xhFilter) {
@@ -742,6 +956,7 @@ function renderXHeaders() {
       h.name.toLowerCase().includes(needle) || (h.value || "").toLowerCase().includes(needle));
   }
   panel.innerHTML = `
+    ${decodedHtml}
     <div class="xh-search">
       <input type="search" placeholder="Filter X-headers by name or value…" value="${esc(xhFilter)}">
       <span class="count">${list.length === count ? `${count} headers` : `${list.length} / ${count} headers`}</span>

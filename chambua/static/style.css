@@ -763,3 +763,123 @@ dialog#confirmDialog p { margin: 0; line-height: 1.5; }
   animation: spin 1s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- v2: Signals tab ---------- */
+
+.severity-head {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin: 14px 0 6px;
+}
+.severity-head.severity-high { color: #ff7b72; }
+.severity-head.severity-medium { color: #ff9a63; }
+.severity-head.severity-low { color: #e3b341; }
+.severity-head.severity-info { color: #9aa3b2; }
+
+.signal-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid var(--border-soft);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 9px 12px;
+  margin-bottom: 8px;
+}
+.signal-row.severity-high { border-left-color: var(--red); }
+.signal-row.severity-medium { border-left-color: var(--orange); }
+.signal-row.severity-low { border-left-color: var(--yellow); }
+.signal-row.severity-info { border-left-color: var(--grey); }
+.signal-row .pill { flex: none; margin-top: 1px; }
+.signal-main { flex: 1; min-width: 0; }
+.signal-name { font-weight: 600; }
+.signal-evidence {
+  color: var(--muted);
+  font-size: 11.5px;
+  margin-top: 2px;
+  word-break: break-all;
+}
+.signal-jump { flex: none; white-space: nowrap; }
+
+@keyframes flash-outline {
+  0% { background: var(--accent-soft); outline: 2px solid var(--accent); }
+  100% { background: transparent; outline: 2px solid transparent; }
+}
+.flash { animation: flash-outline 1.5s ease-out; border-radius: 6px; }
+
+/* ---------- v2: Details consistency ---------- */
+
+.subsection-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 16px 0 6px;
+}
+.check-ok { color: #57d162; font-weight: 700; margin-right: 6px; }
+.severity-dot-high, .severity-dot-medium, .severity-dot-low {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.severity-dot-high { background: var(--red); }
+.severity-dot-medium { background: var(--orange); }
+.severity-dot-low { background: var(--yellow); }
+
+/* ---------- v2: X-headers decoded panel ---------- */
+
+.decoded-panel { margin-bottom: 14px; }
+.decoded-panel .section-head { color: var(--accent); }
+
+/* ---------- v2: attachments ---------- */
+
+.att-rtlo {
+  padding: 8px 12px;
+  background: var(--red-soft);
+  border-top: 1px solid var(--border-soft);
+  color: #ff9b94;
+  font-size: 11.5px;
+  word-break: break-all;
+}
+.att-macro {
+  display: none;
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+}
+.att-macro.open { display: block; }
+.att-macro-toggle { display: block; }
+
+/* ---------- v2: URLs ---------- */
+
+.chain-list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  word-break: break-all;
+}
+.chain-list li { margin: 2px 0; }
+.domain-group { margin-bottom: 6px; }
+.domain-group-head {
+  font-weight: 700;
+  font-size: 12px;
+  padding: 6px 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+  position: sticky;
+  top: -14px;
+  background: var(--bg);
+  z-index: 1;
+}
+
+/* ---------- v2: DKIM depth ---------- */
+
+.dkim-depth { display: none; padding-bottom: 6px; }
+.dkim-depth.open { display: block; }
