@@ -59,10 +59,12 @@ Left pane (six tabs): **Details** (headers: From/Sender/To/Cc/timestamps/
 Return-Path/originating IP/rDNS), **Authentication** (SPF/DKIM/DMARC as
 stamped by the receiving MTA, with on-demand live re-verification), **URLs**
 (defanged, with anchor-mismatch and differs-from-From-domain signals, filters
-and VirusTotal lookups), **Attachments** (MD5/SHA-1/SHA-256, save-to-disk
-with confirmation, VirusTotal by hash), **Transmission** (Received chain as
-an oldest-first timeline), **X-headers** (searchable, full values, no
-truncation).
+and VirusTotal lookups; Microsoft SafeLinks URLs are automatically unwrapped
+— locally, by decoding the wrapper — so the pane shows the real target and
+the signals evaluate against it), **Attachments** (MD5/SHA-1/SHA-256,
+save-to-disk with confirmation, VirusTotal by hash), **Transmission**
+(Received chain as an oldest-first timeline), **X-headers** (searchable,
+full values, no truncation).
 
 Right pane (four tabs): **Rendered** (sandboxed iframe, remote content
 blocked by default), **HTML** (syntax-highlighted source with search),

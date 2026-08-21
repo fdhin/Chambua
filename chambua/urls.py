@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from html import unescape
 from html.parser import HTMLParser
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 _SCHEME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.\-]*:")
 _URL_RE = re.compile(r"""(?:(?:https?|ftp)://|www\.)[^\s<>"'`\)\]]+""", re.IGNORECASE)
@@ -160,6 +160,8 @@ class _LinkExtractor(HTMLParser):
 
 
 def extract_from_html(html: str) -> list[dict]:
+    """Collect hrefs, remote srcs, and anchor text; phishing signals are
+    computed centrally in ``collect_urls`` (against the unwrapped URL)."""
     parser = _LinkExtractor()
     try:
         parser.feed(html)
@@ -171,13 +173,7 @@ def extract_from_html(html: str) -> list[dict]:
         if not _is_url(link["url"]):
             continue
         entry = dict(link)
-        anchor = entry.get("anchor_text")
-        mismatch = False
-        if anchor and _URLISH_RE.match(anchor):
-            anchor_url = _norm_candidate(anchor)
-            h1, h2 = host_of(entry["url"]), host_of(anchor_url)
-            mismatch = bool(h1 and h2 and h1.lower() != h2.lower())
-        entry["anchor_mismatch"] = mismatch
+        entry["anchor_mismatch"] = False
         out.append(entry)
     return out
 
@@ -230,6 +226,30 @@ def _domain_of(url: str) -> str | None:
     return host_of(url)
 
 
+# Microsoft SafeLinks wraps the real destination in a tracking URL:
+#   https://eur06.safelinks.protection.outlook.com/?url=<encoded>&data=…&sdata=…
+# The real target is recoverable by decoding the ``url`` query parameter —
+# purely local string work, no network involved.
+_SAFELINKS_HOST = re.compile(
+    r"^(?:[a-z0-9-]+\.)?safelinks\.protection\.outlook\.com$", re.IGNORECASE
+)
+
+
+def unwrap_safelinks(url: str) -> str | None:
+    """Return the encoded target of a SafeLinks URL, or None."""
+    host = host_of(url)
+    if not host or not _SAFELINKS_HOST.match(host):
+        return None
+    try:
+        query = parse_qs(urlsplit(url).query, keep_blank_values=True)
+    except ValueError:
+        return None
+    target = (query.get("url") or [""])[0].strip()
+    if not re.match(r"^https?://", target, re.IGNORECASE):
+        return None
+    return target
+
+
 def collect_urls(
     html: str | None,
     plaintext: str | None,
@@ -251,16 +271,31 @@ def collect_urls(
         if key in seen:
             continue
         seen.add(key)
-        domain = _domain_of(entry["url"])
-        is_mailto = entry["url"].startswith("mailto:")
+        unwrapped = unwrap_safelinks(entry["url"])
+        effective = unwrapped or entry["url"]
+        domain = _domain_of(effective)
+        is_mailto = effective.startswith("mailto:")
+
+        # Anchor mismatch is evaluated against the effective (unwrapped)
+        # target: SafeLinks makes every href host differ from its anchor
+        # text, which would otherwise flag every rewritten link.
+        mismatch = False
+        anchor = entry.get("anchor_text")
+        if anchor and _URLISH_RE.match(anchor):
+            anchor_url = _norm_candidate(anchor)
+            h1, h2 = host_of(effective), host_of(anchor_url)
+            mismatch = bool(h1 and h2 and h1.lower() != h2.lower())
+
         out.append(
             {
                 "url": entry["url"],
                 "defanged": defang(entry["url"]),
+                "unwrapped": unwrapped,
+                "unwrapped_defanged": defang(unwrapped) if unwrapped else None,
                 "domain": domain,
                 "source": entry["source"],
                 "anchor_text": entry.get("anchor_text"),
-                "anchor_mismatch": bool(entry.get("anchor_mismatch")),
+                "anchor_mismatch": mismatch,
                 "differs_from_from_domain": bool(
                     domain and from_domain and not is_mailto
                     and not same_registrable(domain, from_domain)

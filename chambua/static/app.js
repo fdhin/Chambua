@@ -550,6 +550,7 @@ function renderUrls() {
   const rows = list.map((u) => {
     const domainCell = esc(u.domain || "—");
     const badges = [
+      u.unwrapped ? '<span class="badge blue">SafeLinks</span>' : "",
       u.anchor_mismatch ? '<span class="badge red">Anchor mismatch</span>' : "",
       u.differs_from_from_domain ? '<span class="badge yellow">&ne; From domain</span>' : "",
     ].filter(Boolean).join(" ");
@@ -561,10 +562,16 @@ function renderUrls() {
         ${badges}
       </div>
       ${u.anchor_text ? `<div class="url-anchor">Anchor text: <code>${esc(u.anchor_text)}</code></div>` : ""}
+      ${u.unwrapped ? `
+      <div class="url-anchor">Unwrapped target: <code>${esc(u.unwrapped)}</code></div>
+      <div class="url-defang">
+        <code>${esc(u.unwrapped_defanged)}</code>
+        <button class="copy-btn" data-copy="${esc(u.unwrapped_defanged)}">Copy</button>
+      </div>` : ""}
       <div class="url-defang">
         <code>${esc(u.defanged)}</code>
         <button class="copy-btn" data-copy="${esc(u.defanged)}">Copy</button>
-        <button class="linkish vt-url">Look up on VirusTotal</button>
+        <button class="linkish vt-url" data-vt="${esc(u.unwrapped || u.url)}">Look up on VirusTotal</button>
       </div>
     </div>`;
   }).join("");
@@ -595,10 +602,8 @@ function renderUrls() {
   dedupeCb.addEventListener("change", () => { f.dedupe = dedupeCb.checked; renderUrls(); });
   panel.querySelectorAll("[data-copy]").forEach((b) =>
     b.addEventListener("click", () => copyText(b.dataset.copy, "Defanged URL")));
-  panel.querySelectorAll(".vt-url").forEach((b) => {
-    const url = b.closest(".url-card").querySelector(".url-raw").textContent;
-    b.addEventListener("click", () => vtUrlLookup(url));
-  });
+  panel.querySelectorAll(".vt-url").forEach((b) =>
+    b.addEventListener("click", () => vtUrlLookup(b.dataset.vt)));
 }
 
 /* ---------- left pane: attachments ---------- */

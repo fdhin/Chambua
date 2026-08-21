@@ -12,10 +12,21 @@ from __future__ import annotations
 import io
 import struct
 from pathlib import Path
+from urllib.parse import quote
 
 import pyzipper
 
 FIXTURES = Path(__file__).resolve().parent
+
+
+def safelink(target: str) -> str:
+    """Synthetic Microsoft SafeLinks wrapper around a target URL."""
+    return (
+        "https://eur06.safelinks.protection.outlook.com/?url="
+        + quote(target, safe="")
+        + "&data=05%7C02%7Csynthetic%40example.com%7C0%7C0%7C639228204200000000"
+        "%7CUnknown%7C0%7C0%7C&sdata=SYNTHETIC%2BVALUE%3D%3D&reserved=0"
+    )
 
 # ----------------------------------------------------------------------
 # shared message content
@@ -235,6 +246,23 @@ def build_all() -> None:
         mismatch_headers,
         '<html><body><p>Verify your account:</p>'
         '<a href="http://evil-example.com/verify">https://login.microsoft.com/verify</a>'
+        "</body></html>",
+        mime="text/html",
+    )
+
+    # 9b. Microsoft SafeLinks-wrapped URLs (must unwrap locally)
+    sl_headers = rfc822_headers({
+        "subject": "Your weekly status",
+        "from": "Reports <reports@corp.example>",
+    })
+    write_eml(
+        "safelinks.eml",
+        sl_headers,
+        "<html><body>"
+        f'<a href="{safelink("https://app.chairmind.example/dashboard")}">'
+        "https://app.chairmind.example/dashboard</a> "
+        f'<a href="{safelink("http://evil-track.example/click?id=7")}">'
+        "https://app.chairmind.example/login</a>"
         "</body></html>",
         mime="text/html",
     )

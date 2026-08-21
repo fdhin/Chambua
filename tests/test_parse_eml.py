@@ -138,6 +138,20 @@ def test_anchor_mismatch_phish(ws):
     assert m["differs_from_from_domain"] is True
 
 
+def test_safelinks_fixture_unwraps(ws):
+    parsed, _ = parse(ws, "safelinks.eml")
+    by_domain = {u["domain"]: u for u in parsed["urls"]}
+    clean = by_domain["app.chairmind.example"]
+    assert clean["unwrapped"] == "https://app.chairmind.example/dashboard"
+    assert clean["anchor_mismatch"] is False
+    assert clean["defanged"].startswith("hxxps://eur06[.]safelinks")
+    assert clean["unwrapped_defanged"] == "hxxps://app[.]chairmind[.]example/dashboard"
+    evil = by_domain["evil-track.example"]
+    assert evil["unwrapped"] == "http://evil-track.example/click?id=7"
+    assert evil["anchor_mismatch"] is True
+    assert evil["differs_from_from_domain"] is True
+
+
 def test_malformed_eml_fails_gracefully(ws):
     parsed, _ = parse(ws, "malformed.eml")
     # No crash: a record exists with headers, and the truncation is surfaced.

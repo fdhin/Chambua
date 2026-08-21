@@ -14,6 +14,7 @@ from chambua.urls import (
     idn_forms,
     registrable_domain,
     same_registrable,
+    unwrap_safelinks,
 )
 
 # ---------------------------------------------------------------- URLs
@@ -67,6 +68,69 @@ def test_collect_urls_signals():
     assert by_url["https://corp.example/z"]["anchor_mismatch"] is False
     assert by_url["http://phish.example/x"]["differs_from_from_domain"] is True
     assert by_url["https://corp.example/z"]["differs_from_from_domain"] is False
+
+
+# ---------------------------------------------------------------- SafeLinks
+
+
+def _safelink(target: str) -> str:
+    from urllib.parse import quote
+
+    return (
+        "https://eur06.safelinks.protection.outlook.com/?url="
+        + quote(target, safe="")
+        + "&data=05%7C02%7Csynthetic%7C0%7C0%7C&sdata=SYN%3D&reserved=0"
+    )
+
+
+def test_unwrap_safelinks():
+    assert (
+        unwrap_safelinks(_safelink("https://app.chairmind.example/dashboard"))
+        == "https://app.chairmind.example/dashboard"
+    )
+    assert (
+        unwrap_safelinks(_safelink("http://plain.example:8080/a?b=c&d=e"))
+        == "http://plain.example:8080/a?b=c&d=e"
+    )
+    # Regional and bare host forms both match.
+    assert unwrap_safelinks("https://safelinks.protection.outlook.com/?url=https%3A%2F%2Fa.example%2F")
+    # Not a SafeLinks URL, or no usable url= parameter.
+    assert unwrap_safelinks("https://eur06.safelinks.protection.outlook.com/") is None
+    assert unwrap_safelinks("https://outlook.example/?url=https%3A%2F%2Fa.example%2F") is None
+    assert unwrap_safelinks("https://eur06.safelinks.protection.outlook.com/?url=javascript%3Ax") is None
+
+
+def test_safelinks_signals_evaluate_against_real_target():
+    wrapped = _safelink("https://app.chairmind.example/dashboard")
+    urls = collect_urls(
+        f'<a href="{wrapped}">https://app.chairmind.example/dashboard</a>',
+        None,
+        {},
+        "corp.example",
+    )
+    (u,) = urls
+    assert u["unwrapped"] == "https://app.chairmind.example/dashboard"
+    assert u["domain"] == "app.chairmind.example"
+    # The anchor text matches the real target — no false "Anchor mismatch".
+    assert u["anchor_mismatch"] is False
+    assert u["differs_from_from_domain"] is True
+    assert u["unwrapped_defanged"] == "hxxps://app[.]chairmind[.]example/dashboard"
+    # The wrapped link itself keeps its own defanged form for reporting.
+    assert u["defanged"].startswith("hxxps://eur06[.]safelinks[.]protection")
+
+
+def test_safelinks_true_mismatch_still_detected():
+    wrapped = _safelink("http://evil-track.example/click?id=7")
+    urls = collect_urls(
+        f'<a href="{wrapped}">https://app.chairmind.example/login</a>',
+        None,
+        {},
+        "corp.example",
+    )
+    (u,) = urls
+    assert u["unwrapped"] == "http://evil-track.example/click?id=7"
+    assert u["anchor_mismatch"] is True
+    assert u["domain"] == "evil-track.example"
 
 
 # ---------------------------------------------------------------- Received

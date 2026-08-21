@@ -1,0 +1,21 @@
+Return-Path: <billing@evil-example.com>
+Received: from mx.receiver.example (mx.receiver.example [198.51.100.9])
+	by mail.corp.example with ESMTPS id abc123; Mon, 17 Nov 2025 09:15:02 +0100
+Received: from vps-attacker.host (vps-attacker.host [203.0.113.66])
+	by mx.receiver.example with ESMTP id def456; Mon, 17 Nov 2025 09:15:01 +0100
+Authentication-Results: spf.protection.outlook.com;
+	spf=fail (sender IP is 203.0.113.66) smtp.mailfrom=evil-example.com;
+	dkim=none (message not signed) header.d=none;
+	dmarc=fail action=quarantine header.from=evil-example.com; compauth=fail
+From: Reports <reports@corp.example>
+Reply-To: support@phish-collection.example
+To: alice@corp.example
+Subject: Your weekly status
+Date: Mon, 17 Nov 2025 09:14:55 +0100
+Message-ID: <CAF123@evil-example.com>
+X-Microsoft-Antispam-Mailbox-Delivery: grhf:1|jaj:0
+X-Sender-IP: 203.0.113.66
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><body><a href="https://eur06.safelinks.protection.outlook.com/?url=https%3A%2F%2Fapp.chairmind.example%2Fdashboard&data=05%7C02%7Csynthetic%40example.com%7C0%7C0%7C639228204200000000%7CUnknown%7C0%7C0%7C&sdata=SYNTHETIC%2BVALUE%3D%3D&reserved=0">https://app.chairmind.example/dashboard</a> <a href="https://eur06.safelinks.protection.outlook.com/?url=http%3A%2F%2Fevil-track.example%2Fclick%3Fid%3D7&data=05%7C02%7Csynthetic%40example.com%7C0%7C0%7C639228204200000000%7CUnknown%7C0%7C0%7C&sdata=SYNTHETIC%2BVALUE%3D%3D&reserved=0">https://app.chairmind.example/login</a></body></html>
