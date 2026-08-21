@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mail Analysis Workbench</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header id="topbar">
+    <button id="btnFiles" class="icon-btn" title="Toggle session file list (loaded messages)">&#9776;</button>
+    <div id="subjectWrap">
+      <h1 id="subject">Drop a message to begin</h1>
+      <div id="subjectMeta">Local analysis only — nothing leaves this machine</div>
+    </div>
+    <div class="topbar-actions">
+      <button id="btnPermalink" class="icon-btn" title="Copy record link" disabled>&#128279;</button>
+      <button id="btnQuit" class="btn-danger">Quit app</button>
+    </div>
+  </header>
+
+  <div id="layout">
+    <aside id="filelist" hidden>
+      <div class="filelist-head">Manual uploads <span id="filelistCount"></span></div>
+      <ul id="filelistItems"></ul>
+      <div id="issueList"></div>
+      <div class="filelist-foot">
+        <button id="btnBrowse">Add files&hellip;</button>
+        <input type="file" id="fileInput" multiple accept=".eml,.msg,.zip" hidden>
+      </div>
+    </aside>
+
+    <main id="split">
+      <section id="leftPane" class="pane">
+        <nav class="tabs" id="leftTabs">
+          <button class="tab active" data-tab="details">Details</button>
+          <button class="tab" data-tab="auth">Authentication</button>
+          <button class="tab" data-tab="urls">URLs</button>
+          <button class="tab" data-tab="attachments">Attachments</button>
+          <button class="tab" data-tab="transmission">Transmission</button>
+          <button class="tab" data-tab="xheaders">X-headers</button>
+        </nav>
+        <div class="tab-panels" id="leftPanels">
+          <section class="panel active" data-panel="details"></section>
+          <section class="panel" data-panel="auth"></section>
+          <section class="panel" data-panel="urls"></section>
+          <section class="panel" data-panel="attachments"></section>
+          <section class="panel" data-panel="transmission"></section>
+          <section class="panel" data-panel="xheaders"></section>
+        </div>
+      </section>
+
+      <div id="divider" title="Drag to resize"></div>
+
+      <section id="rightPane" class="pane">
+        <nav class="tabs" id="rightTabs">
+          <button class="tab active" data-tab="rendered">Rendered</button>
+          <button class="tab" data-tab="html">HTML</button>
+          <button class="tab" data-tab="plaintext">Plaintext</button>
+          <button class="tab" data-tab="source">Source</button>
+        </nav>
+        <div class="tab-panels" id="rightPanels">
+          <section class="panel" data-panel="rendered">
+            <div id="renderWrap">
+              <div id="remoteBanner" hidden>
+                <span id="remoteBannerText">Remote content blocked.</span>
+                <button id="btnRemote">Load remote content</button>
+              </div>
+              <iframe id="renderFrame" sandbox="" referrerpolicy="no-referrer"
+                      title="Rendered message body"></iframe>
+            </div>
+          </section>
+          <section class="panel" data-panel="html">
+            <div class="code-tools">
+              <input type="search" id="htmlSearch" placeholder="Search HTML source&hellip;">
+              <span class="match-count" id="htmlMatchCount"></span>
+              <button id="htmlCopy" class="copy-btn">Copy all</button>
+            </div>
+            <div class="code-view" id="htmlView"></div>
+          </section>
+          <section class="panel" data-panel="plaintext">
+            <div class="code-tools">
+              <input type="search" id="ptSearch" placeholder="Search plaintext&hellip;">
+              <span class="match-count" id="ptMatchCount"></span>
+              <button id="ptCopy" class="copy-btn">Copy all</button>
+            </div>
+            <div class="code-view" id="ptView"></div>
+          </section>
+          <section class="panel" data-panel="source">
+            <div class="code-tools">
+              <input type="search" id="srcSearch" placeholder="Search raw source&hellip;">
+              <span class="match-count" id="srcMatchCount"></span>
+              <button id="srcCopy" class="copy-btn">Copy all</button>
+            </div>
+            <div class="code-view" id="srcView"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="emptyState">
+    <div class="drop-hero">
+      <div class="big">Drop message files here</div>
+      <div class="small">Accepts .eml, .msg and .zip &mdash; multiple files welcome.<br>
+        Everything is analyzed locally; no message data leaves this machine.</div>
+      <div style="margin-top:18px"><button id="btnBrowseEmpty">Browse files&hellip;</button></div>
+    </div>
+  </div>
+
+  <div id="dropOverlay" hidden><div>Drop files to analyze</div></div>
+
+  <div id="toast"></div>
+
+  <dialog id="confirmDialog">
+    <p id="confirmText"></p>
+    <div class="dlg-actions">
+      <button id="confirmCancel" value="cancel">Cancel</button>
+      <button id="confirmOk" value="ok" class="btn-danger">Save anyway</button>
+    </div>
+  </dialog>
+</body>
+</html>

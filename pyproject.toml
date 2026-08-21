@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mail-workbench"
+version = "0.1.0"
+description = "Local, single-user inspector for suspicious email messages (.eml / .msg / .zip). No message data leaves the machine."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "fastapi==0.141.1",
+    "uvicorn[standard]==0.52.4",
+    "extract-msg==0.56.1",
+    "pyzipper==0.4.0",
+    "pyspf==2.0.14",
+    "dkimpy==1.1.8",
+    "checkdmarc==5.17.5",
+    "dnspython==2.8.0",
+    "bleach==6.4.0",
+    "tinycss2==1.5.1",
+    "platformdirs==4.11.3",
+    "python-multipart==0.0.32",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "httpx==0.28.1",
+    "pyinstaller==6.22.2",
+]
+
+[project.scripts]
+mail-workbench = "mail_workbench.__main__:main"
+
+[tool.setuptools]
+packages = ["mail_workbench"]
+
+[tool.setuptools.package-data]
+mail_workbench = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

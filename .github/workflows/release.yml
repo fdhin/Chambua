@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # macOS is the primary v1 target; Windows rides along per the spec.
+        include:
+          - os: macos-latest
+            artifact_suffix: macos
+          - os: windows-latest
+            artifact_suffix: windows-x64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest tests/ -q
+
+      - name: Build binary
+        run: pyinstaller mail-workbench.spec
+
+      - name: Rename artifact (unix)
+        if: runner.os != 'Windows'
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          cp dist/mail-workbench "mail-workbench-${VERSION}-${{ matrix.artifact_suffix }}"
+          shasum -a 256 "mail-workbench-${VERSION}-${{ matrix.artifact_suffix }}" > "mail-workbench-${VERSION}-${{ matrix.artifact_suffix }}.sha256"
+
+      - name: Rename artifact (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $VERSION = $env:GITHUB_REF_NAME.TrimStart('v')
+          Copy-Item dist/mail-workbench.exe "mail-workbench-$VERSION-${{ matrix.artifact_suffix }}.exe"
+          Get-FileHash "mail-workbench-$VERSION-${{ matrix.artifact_suffix }}.exe" -Algorithm SHA256 | `
+            ForEach-Object { "$($_.Hash)  mail-workbench-$VERSION-${{ matrix.artifact_suffix }}.exe" } | `
+            Out-File "mail-workbench-$VERSION-${{ matrix.artifact_suffix }}.exe.sha256" -Encoding ascii
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mail-workbench-${{ matrix.artifact_suffix }}
+          path: |
+            mail-workbench-*${{ matrix.artifact_suffix }}*
+            !mail-workbench-*${{ matrix.artifact_suffix }}*.sha256
+
+      - name: Attach to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            mail-workbench-*${{ matrix.artifact_suffix }}*

@@ -1,0 +1,17 @@
+Return-Path: <billing@evil-example.com>
+Received: from mx.receiver.example (mx.receiver.example [198.51.100.9])
+	by mail.corp.example with ESMTPS id abc123; Mon, 17 Nov 2025 09:15:02 +0100
+Received: from vps-attacker.host (vps-attacker.host [203.0.113.66])
+	by mx.receiver.example with ESMTP id def456; Mon, 17 Nov 2025 09:15:01 +0100
+From: "Microsoft Billing" <billing@evil-example.com>
+Reply-To: support@phish-collection.example
+To: alice@corp.example
+Subject: Your invoice is ready
+Date: Mon, 17 Nov 2025 09:14:55 +0100
+Message-ID: <CAF123@evil-example.com>
+X-Microsoft-Antispam-Mailbox-Delivery: grhf:1|jaj:0
+X-Sender-IP: 203.0.113.66
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Plain message with no stamped auth results.
